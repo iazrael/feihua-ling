@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const dataPath = path.join(__dirname, 'Poetry');
+
 const prisma = new PrismaClient();
 
 // 定义诗歌数据类型
@@ -56,12 +58,12 @@ async function main() {
   await prisma.poem.deleteMany({});
   
   // 支持的朝代列表
-  const dynasties = ['先秦', '汉', '魏晋', '南北朝', '隋', '唐', '宋', '元', '明', '清', '近现代', '当代'];
+  const dynasties = ['秦', '汉', '魏晋', '南北朝', '隋', '唐', '宋_1', '宋_2', '宋_3', '宋_4', '元'];
   let totalPoems = 0;
   
   // 解析各个朝代的CSV数据
   for (const dynasty of dynasties) {
-    const csvPath = path.join(__dirname, `${dynasty}.csv`);
+    const csvPath = path.join(dataPath, `${dynasty}.csv`);
     
     // 检查文件是否存在
     if (!fs.existsSync(csvPath)) {

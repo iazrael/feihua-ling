@@ -25,7 +25,7 @@ echo "🗄️  运行数据库迁移..."
 npx prisma migrate deploy
 
 # 4. 检查并初始化数据库
-if [ ! -f "dev.db" ]; then
+if [ ! -f "prisma/dev.db" ]; then
   echo "📚 初始化诗词数据库（这可能需要几分钟）..."
   npm run seed:new
 else

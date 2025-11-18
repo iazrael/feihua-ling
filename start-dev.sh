@@ -19,7 +19,7 @@ else
 fi
 
 # 检查并初始化数据库
-if [ ! -f "dev.db" ]; then
+if [ ! -f "prisma/dev.db" ]; then
   echo "🗄️  初始化数据库..."
   npx prisma generate
   npx prisma migrate deploy
