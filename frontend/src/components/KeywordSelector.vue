@@ -59,10 +59,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useGameStore } from '@/stores/game';
 
 const emit = defineEmits<{
   start: [keyword: string]
 }>();
+
+const gameStore = useGameStore();
 
 const popularKeywords = ['春', '花', '月', '夜', '风', '雨', '云', '水', '山', '雪'];
 const customKeyword = ref('');
@@ -78,11 +81,8 @@ const selectRandomKeyword = async () => {
   errorMessage.value = '';
   
   try {
-    const response = await fetch('/api/v1/game/random-char');
-    if (!response.ok) throw new Error('无法获取随机关键字');
-    
-    const data = await response.json();
-    emit('start', data.char);
+    const char = await gameStore.getRandomKeyword();
+    emit('start', char);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '获取随机关键字失败';
   } finally {

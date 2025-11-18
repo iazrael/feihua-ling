@@ -264,6 +264,20 @@ export const useGameStore = defineStore('game', {
       }
     },
 
+    // 获取随机关键字
+    async getRandomKeyword() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/game/random-char`);
+        if (!response.ok) throw new Error('无法获取随机关键字');
+        
+        const data = await response.json();
+        return data.char;
+      } catch (error) {
+        console.error('获取随机关键字失败:', error);
+        throw error;
+      }
+    },
+
     // 获取提示
     async getHint() {
       try {

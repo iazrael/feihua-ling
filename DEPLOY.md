@@ -36,7 +36,7 @@ cd ..
 mkdir -p frontend
 cd frontend
 cat > .env.production << EOF
-VITE_API_BASE_URL=/api
+VITE_API_BASE_URL=/api/v1
 EOF
 cd ..
 ```
@@ -109,7 +109,7 @@ cd ..
 mkdir -p frontend
 cd frontend
 cat > .env.production << EOF
-VITE_API_BASE_URL=/api
+VITE_API_BASE_URL=/api/v1
 EOF
 cd ..
 ```

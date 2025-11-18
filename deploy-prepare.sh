@@ -48,7 +48,7 @@ echo "✓ 数据库文件已复制"
 echo "⚙️  创建前端环境变量文件..."
 cd frontend
 cat > .env.production << EOF
-VITE_API_BASE_URL=/api
+VITE_API_BASE_URL=/api/v1
 EOF
 echo "✓ 前端环境变量文件已创建"
 cd ..
