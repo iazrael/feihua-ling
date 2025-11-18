@@ -3,6 +3,8 @@ import type { GameState, HistoryItem } from '@/types/game';
 
 const API_BASE_URL = 'http://localhost:3000/api/v1';
 
+const DEFAULT_TIMER_DURATION = 20; // 默认倒计时20秒
+
 export const useGameStore = defineStore('game', {
   state: (): GameState => ({
     keyword: '',
@@ -24,11 +26,12 @@ export const useGameStore = defineStore('game', {
       perfectRounds: 0,
     },
     currentHintLevel: 0,
-    timeRemaining: 10,
+    timeRemaining: DEFAULT_TIMER_DURATION,
     timerActive: false,
     roundStartTime: 0,
     soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
     soundVolume: parseFloat(localStorage.getItem('soundVolume') || '0.8'),
+    timerDuration: parseInt(localStorage.getItem('timerDuration') || String(DEFAULT_TIMER_DURATION)),
   }),
 
   getters: {
@@ -51,9 +54,15 @@ export const useGameStore = defineStore('game', {
       localStorage.setItem('soundVolume', String(volume));
     },
 
+    // 设置倒计时时长
+    setTimerDuration(duration: number) {
+      this.timerDuration = duration;
+      localStorage.setItem('timerDuration', String(duration));
+    },
+
     // 启动倒计时
     startTimer() {
-      this.timeRemaining = 10;
+      this.timeRemaining = this.timerDuration;
       this.timerActive = true;
       this.roundStartTime = Date.now();
     },

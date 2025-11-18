@@ -98,11 +98,10 @@ const handleQuit = () => {
 };
 
 const handleTimeout = () => {
-  if (gameStore.remainingChances <= 0) {
-    setTimeout(() => {
-      router.push('/result');
-    }, 1500);
-  }
+  // 超时后立即结束游戏，忽略剩余机会
+  soundService.play(SoundType.GAME_OVER);
+  gameStore.endGame();
+  router.push('/result');
 };
 </script>
 

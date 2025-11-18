@@ -43,4 +43,5 @@ export interface GameState {
   roundStartTime: number;
   soundEnabled: boolean;
   soundVolume: number;
+  timerDuration: number; // 倒计时时长（秒）
 }

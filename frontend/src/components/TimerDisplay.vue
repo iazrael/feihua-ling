@@ -20,7 +20,7 @@ const timerColorClass = computed(() => {
 
 // 倒计时进度百分比
 const progressPercentage = computed(() => {
-  return (gameStore.timeRemaining / 10) * 100;
+  return (gameStore.timeRemaining / gameStore.timerDuration) * 100;
 });
 
 // 进度条颜色
@@ -51,7 +51,7 @@ function startCountdown() {
     }
 
     const elapsed = (Date.now() - gameStore.roundStartTime) / 1000;
-    const remaining = Math.max(0, 10 - elapsed);
+    const remaining = Math.max(0, gameStore.timerDuration - elapsed);
     
     gameStore.updateTimeRemaining(Math.ceil(remaining));
 

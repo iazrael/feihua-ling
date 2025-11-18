@@ -1,7 +1,7 @@
 <template>
   <div class="history-list">
     <h3 class="text-xl font-bold mb-4 text-primary-dark">对战记录</h3>
-    <div class="space-y-3 max-h-96 overflow-y-auto">
+    <div ref="scrollContainer" class="space-y-3 max-h-96 overflow-y-auto">
       <div
         v-for="item in history"
         :key="`${item.round}-${item.speaker}`"
@@ -26,11 +26,25 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch, nextTick } from 'vue';
 import type { HistoryItem } from '@/types/game';
 
-defineProps<{
+const props = defineProps<{
   history: HistoryItem[];
 }>();
+
+const scrollContainer = ref<HTMLElement | null>(null);
+
+// 监听历史记录变化，自动滚动到底部
+watch(() => props.history.length, async () => {
+  await nextTick();
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTo({
+      top: scrollContainer.value.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+});
 </script>
 
 <style scoped>

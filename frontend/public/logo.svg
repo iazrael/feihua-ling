@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- 背景 - 印章红底 -->
+  <rect width="128" height="128" rx="8" fill="#CC3333"/>
+  
+  <!-- 边框装饰 -->
+  <rect x="4" y="4" width="120" height="120" rx="6" fill="none" stroke="#FFD700" stroke-width="2"/>
+  <rect x="8" y="8" width="112" height="112" rx="4" fill="none" stroke="#FFD700" stroke-width="1"/>
+  
+  <!-- 主体文字 "花" - 篆书风格 -->
+  <g fill="#FFE8CC" stroke="#FFE8CC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 花字上部草字头 -->
+    <path d="M 40 25 Q 45 22 50 25 T 60 25" fill="none" stroke-width="3"/>
+    <path d="M 68 25 Q 73 22 78 25 T 88 25" fill="none" stroke-width="3"/>
+    
+    <!-- 花字中部人字形 -->
+    <path d="M 50 35 L 45 50 L 50 55" fill="none" stroke-width="3"/>
+    <path d="M 78 35 L 83 50 L 78 55" fill="none" stroke-width="3"/>
+    
+    <!-- 花字下部化字 -->
+    <path d="M 35 65 L 50 80 L 64 65" fill="none" stroke-width="3"/>
+    <path d="M 64 65 L 78 80 L 93 65" fill="none" stroke-width="3"/>
+    <line x1="50" y1="80" x2="50" y2="95" stroke-width="3"/>
+    <line x1="78" y1="80" x2="78" y2="95" stroke-width="3"/>
+    
+    <!-- 装饰性花瓣 -->
+    <circle cx="64" cy="50" r="3" fill="#FFD700"/>
+  </g>
+  
+  <!-- 底部装饰文字 "令" -->
+  <text x="64" y="115" font-family="KaiTi, STKaiti, serif" font-size="20" fill="#FFE8CC" text-anchor="middle" font-weight="bold">令</text>
+</svg>
