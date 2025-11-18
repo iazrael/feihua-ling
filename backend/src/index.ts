@@ -95,10 +95,13 @@ app.post('/api/v1/game/ai-turn', async (req, res) => {
         }));
     }
 
-    // 优化查询，限制结果数量并只选择必要的字段
+    // 优化查询，限制结果数量并选择必要的字段
     const poems = await prisma.poem.findMany({
         where: whereCondition,
         select: {
+            id: true,
+            title: true,
+            author: true,
             content: true
         },
         take: 500 // 限制结果数量以提高性能
@@ -121,22 +124,26 @@ app.post('/api/v1/game/ai-turn', async (req, res) => {
         ? sentences[0] 
         : randomPoem.content.split(/[，。！？；]/)[0] || randomPoem.content;
         
-    res.json({ sentence: sentence });
+    res.json({ 
+        sentence: sentence,
+        title: randomPoem.title,
+        author: randomPoem.author
+    });
 });
 
-// API: 搜索诗句（新增）
-app.post('/api/v1/game/search-poems', async (req, res) => {
-    const { char, limit = 20 } = req.body;
+// API: 开始游戏 - 验证关键字并返回AI首句
+app.post('/api/v1/game/start', async (req, res) => {
+    const { keyword } = req.body;
 
-    if (!char) {
-        return res.status(400).json({ error: '缺少令字参数' });
+    if (!keyword || keyword.length !== 1) {
+        return res.status(400).json({ error: '请提供一个有效的汉字作为关键字' });
     }
 
-    // 搜索包含指定字符的诗句
+    // 查找包含该关键字的诗句
     const poems = await prisma.poem.findMany({
         where: {
             content: {
-                contains: char
+                contains: keyword
             }
         },
         select: {
@@ -145,38 +152,81 @@ app.post('/api/v1/game/search-poems', async (req, res) => {
             author: true,
             content: true
         },
-        take: Math.min(limit, 100) // 限制返回数量
+        take: 500
     });
 
-    res.json({ poems });
-});
-
-// API: 获取诗人作品（新增）
-app.get('/api/v1/poets/:author/poems', async (req, res) => {
-    const { author } = req.params;
-    const { limit = 20 } = req.query;
-
-    if (!author) {
-        return res.status(400).json({ error: '缺少诗人参数' });
+    if (poems.length === 0) {
+        return res.status(404).json({ error: '诗词库中没有包含该字的诗句，请换一个字试试' });
     }
 
-    // 搜索指定诗人的作品
-    const poems = await prisma.poem.findMany({
+    // 随机选择一首诗作为AI的首句
+    const randomPoem = poems[Math.floor(Math.random() * poems.length)];
+    const sentences = randomPoem.content
+        .split(/[，。！？；]/)
+        .filter(s => s.includes(keyword) && s.length > 0);
+    
+    const sentence = sentences.length > 0 
+        ? sentences[0] 
+        : randomPoem.content.split(/[，。！？；]/)[0] || randomPoem.content;
+
+    res.json({
+        success: true,
+        keyword: keyword,
+        firstSentence: {
+            content: sentence,
+            title: randomPoem.title,
+            author: randomPoem.author
+        }
+    });
+});
+
+// API: 获取提示
+app.post('/api/v1/game/hint', async (req, res) => {
+    const { keyword, hintLevel } = req.body;
+
+    if (!keyword) {
+        return res.status(400).json({ error: '缺少关键字参数' });
+    }
+
+    // 查找一首包含关键字的诗
+    const poem = await prisma.poem.findFirst({
         where: {
-            author: {
-                contains: author
+            content: {
+                contains: keyword
             }
         },
         select: {
-            id: true,
             title: true,
             author: true,
             content: true
-        },
-        take: Math.min(Number(limit), 100)
+        }
     });
 
-    res.json({ poems });
+    if (!poem) {
+        return res.status(404).json({ error: '找不到提示' });
+    }
+
+    // 根据提示级别返回不同的提示
+    let hint = '';
+    const sentences = poem.content.split(/[，。！？；]/).filter(s => s.includes(keyword) && s.length > 0);
+    const targetSentence = sentences[0] || '';
+
+    switch (hintLevel) {
+        case 1:
+            hint = `提示：这句诗的作者是${poem.author}`;
+            break;
+        case 2:
+            hint = `提示：这句诗出自《${poem.title}》`;
+            break;
+        case 3:
+            // 显示诗句的第一个字
+            hint = `提示：诗句开头是"${targetSentence.charAt(0)}"字`;
+            break;
+        default:
+            hint = '继续加油！';
+    }
+
+    res.json({ hint, sentence: targetSentence });
 });
 
 app.listen(port, () => {
