@@ -3,8 +3,23 @@ import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import { pinyin } from 'pinyin-pro';
 import { distance } from 'fastest-levenshtein';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
-const prisma = new PrismaClient();
+// 检查数据库文件是否存在
+const dbPath = join(__dirname, 'prod.db');
+if (!existsSync(dbPath)) {
+    console.error('数据库文件不存在，请确保已正确部署数据库文件到 api/prod.db');
+    process.exit(1);
+}
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: 'file:./prod.db'
+    }
+  }
+});
 const app = express();
 
 app.use(cors());
