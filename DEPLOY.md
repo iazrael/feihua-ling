@@ -6,12 +6,13 @@
 - GitHub 账号
 - Vercel 账号（可用 GitHub 登录）
 
-### 2. 准备数据库文件
+### 2. 准备数据库文件和环境变量
 
-在部署之前，需要准备一个包含诗词数据的 SQLite 数据库文件：
+在部署之前，需要准备一个包含诗词数据的 SQLite 数据库文件和正确的环境变量配置：
 
 ```bash
 # 在项目根目录执行
+# 1. 准备数据库
 cd backend
 
 # 安装依赖
@@ -28,6 +29,16 @@ npm run seed:new
 
 # 将生成的数据库文件复制到 api 目录
 cp dev.db ../api/prod.db
+
+cd ..
+
+# 2. 创建前端生产环境变量
+mkdir -p frontend
+cd frontend
+cat > .env.production << EOF
+VITE_API_BASE_URL=/api
+EOF
+cd ..
 ```
 
 ## 方法一：通过 Vercel Dashboard 部署（推荐）
@@ -92,6 +103,14 @@ npx prisma generate
 npx prisma migrate deploy
 npm run seed:new
 cp dev.db ../api/prod.db
+cd ..
+
+# 确保前端环境变量配置正确
+mkdir -p frontend
+cd frontend
+cat > .env.production << EOF
+VITE_API_BASE_URL=/api
+EOF
 cd ..
 ```
 

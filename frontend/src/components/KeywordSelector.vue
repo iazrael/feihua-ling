@@ -78,7 +78,7 @@ const selectRandomKeyword = async () => {
   errorMessage.value = '';
   
   try {
-    const response = await fetch('http://localhost:3000/api/v1/game/random-char');
+    const response = await fetch('/api/v1/game/random-char');
     if (!response.ok) throw new Error('无法获取随机关键字');
     
     const data = await response.json();

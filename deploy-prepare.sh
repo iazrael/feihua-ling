@@ -44,7 +44,16 @@ mkdir -p api
 cp backend/prisma/dev.db api/prod.db
 echo "✓ 数据库文件已复制"
 
-# 6. 安装 API 依赖
+# 6. 创建前端环境变量文件
+echo "⚙️  创建前端环境变量文件..."
+cd frontend
+cat > .env.production << EOF
+VITE_API_BASE_URL=/api
+EOF
+echo "✓ 前端环境变量文件已创建"
+cd ..
+
+# 7. 安装 API 依赖
 echo "📦 安装 API 依赖..."
 cd api
 if [ ! -d "node_modules" ]; then
@@ -79,6 +88,7 @@ echo "📝 文件检查清单："
 echo "  ✓ backend/prisma/dev.db - 开发数据库"
 echo "  ✓ api/prod.db - 生产数据库"
 echo "  ✓ frontend/dist - 前端构建产物"
+echo "  ✓ frontend/.env.production - 前端生产环境变量"
 echo ""
 echo "🚀 下一步部署选项："
 echo ""
