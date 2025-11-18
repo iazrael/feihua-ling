@@ -11,6 +11,11 @@ const usedPoems = ref<string[]>([]);
 const message = ref('');
 const isPlayerTurn = ref(true);
 
+// 新增的搜索功能相关变量
+const searchChar = ref('');
+const searchResults = ref<{ id: number; title: string; author: string; content: string }[]>([]);
+const showSearch = ref(false);
+
 async function startGame() {
     gameStarted.value = true;
     history.value = [];
@@ -24,8 +29,12 @@ async function startGame() {
         const data = await response.json();
         ling.value = data.char;
         message.value = `本轮的令字是 "${ling.value}"`;
-    } catch (error: any) {
-        message.value = error.message;
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            message.value = error.message;
+        } else {
+            message.value = '未知错误';
+        }
     }
 }
 
@@ -55,8 +64,12 @@ async function submitSentence() {
             history.value.pop(); // 移除无效的输入
             isPlayerTurn.value = true;
         }
-    } catch (error) {
-        message.value = '请求失败，请检查网络';
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            message.value = error.message;
+        } else {
+            message.value = '未知错误';
+        }
         isPlayerTurn.value = true;
     }
 }
@@ -77,155 +90,142 @@ async function aiTurn() {
         usedPoems.value.push(aiSentence);
         message.value = '该你了！';
         isPlayerTurn.value = true;
-    } catch (error: any) {
-        message.value = error.message;
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            message.value = error.message;
+        } else {
+            message.value = '未知错误';
+        }
         gameStarted.value = false; // 游戏结束
     }
+}
+
+// 新增的搜索功能
+async function searchPoems() {
+    if (!searchChar.value.trim()) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/game/search-poems`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ char: searchChar.value.trim(), limit: 10 }),
+        });
+        const data = await response.json();
+        searchResults.value = data.poems;
+        showSearch.value = true;
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error('搜索失败:', error.message);
+        } else {
+            console.error('搜索失败: 未知错误');
+        }
+    }
+}
+
+function closeSearch() {
+    showSearch.value = false;
+    searchResults.value = [];
 }
 </script>
 
 <template>
-    <main class="game-container">
-        <h1>飞花令</h1>
-        <p class="subtitle">挑战AI，看看谁才是诗词王者</p>
-
-        <button v-if="!gameStarted" @click="startGame" class="start-button">
-            开始游戏
+  <div class="home">
+    <h1 class="text-3xl font-bold mb-6">飞花令游戏</h1>
+    
+    <!-- 搜索功能 -->
+    <div class="mb-8 p-4 bg-gray-100 rounded-lg">
+      <h2 class="text-xl font-semibold mb-3">搜索诗句</h2>
+      <div class="flex">
+        <input 
+          v-model="searchChar" 
+          @keyup.enter="searchPoems"
+          placeholder="输入要搜索的字" 
+          class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button 
+          @click="searchPoems"
+          class="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors"
+        >
+          搜索
         </button>
-
-        <div v-if="gameStarted" class="game-area">
-            <div class="status-message">{{ message }}</div>
-
-            <div class="history">
-                <div v-for="(item, index) in history" :key="index" class="history-item" :class="{ 'user-item': item.author === '你', 'ai-item': item.author === 'AI' }">
-                    <strong>{{ item.author }}:</strong> {{ item.text }}
-                </div>
-            </div>
-
-            <div class="input-area">
-                <input
-                    v-model="userInput"
-                    @keyup.enter="submitSentence"
-                    :disabled="!isPlayerTurn"
-                    placeholder="请输入包含令字的诗句..."
-                />
-                <button @click="submitSentence" :disabled="!isPlayerTurn">
-                    出招
-                </button>
-            </div>
+      </div>
+      
+      <!-- 搜索结果 -->
+      <div v-if="showSearch" class="mt-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-lg font-medium">搜索结果</h3>
+          <button @click="closeSearch" class="text-gray-500 hover:text-gray-700">
+            关闭
+          </button>
         </div>
-    </main>
+        <div v-if="searchResults.length > 0" class="space-y-3">
+          <div 
+            v-for="poem in searchResults" 
+            :key="poem.id"
+            class="p-3 bg-white rounded-lg shadow"
+          >
+            <div class="font-medium">{{ poem.title }}</div>
+            <div class="text-sm text-gray-600">{{ poem.author }}</div>
+            <div class="mt-1 text-gray-800">{{ poem.content }}</div>
+          </div>
+        </div>
+        <div v-else class="text-gray-500">
+          未找到相关诗句
+        </div>
+      </div>
+    </div>
+    
+    <!-- 游戏区域 -->
+    <div class="game-area">
+      <div v-if="!gameStarted" class="text-center">
+        <button 
+          @click="startGame"
+          class="px-6 py-3 bg-green-500 text-white text-lg rounded-lg hover:bg-green-600 transition-colors"
+        >
+          开始游戏
+        </button>
+      </div>
+      
+      <div v-else>
+        <div class="mb-4 text-center">
+          <div class="text-2xl font-bold mb-2">令字：{{ ling }}</div>
+          <div class="text-lg">{{ message }}</div>
+        </div>
+        
+        <div class="mb-6">
+          <div class="flex">
+            <input 
+              v-model="userInput" 
+              @keyup.enter="submitSentence"
+              :disabled="!isPlayerTurn"
+              placeholder="请输入包含令字的诗句" 
+              class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+            />
+            <button 
+              @click="submitSentence"
+              :disabled="!isPlayerTurn"
+              class="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400"
+            >
+              提交
+            </button>
+          </div>
+        </div>
+        
+        <div class="history">
+          <h3 class="text-lg font-semibold mb-2">游戏历史</h3>
+          <div class="space-y-2">
+            <div 
+              v-for="(item, index) in history" 
+              :key="index"
+              class="p-3 rounded-lg"
+              :class="item.author === '你' ? 'bg-blue-100' : 'bg-green-100'"
+            >
+              <span class="font-medium">{{ item.author }}：</span>
+              <span>{{ item.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
-
-<style scoped>
-.game-container {
-    text-align: center;
-    color: #333;
-}
-
-h1 {
-    font-size: 3rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    color: #2c3e50;
-}
-
-.subtitle {
-    font-size: 1.2rem;
-    color: #666;
-    margin-bottom: 2rem;
-}
-
-.start-button {
-    font-size: 1.5rem;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    border: none;
-    background-color: #42b983;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.start-button:hover {
-    background-color: #369f72;
-}
-
-.game-area {
-    margin-top: 2rem;
-    padding: 2rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-}
-
-.status-message {
-    font-size: 1.2rem;
-    font-weight: bold;
-    min-height: 2rem;
-    color: #3a8c6c;
-}
-
-.history {
-    margin-top: 1.5rem;
-    text-align: left;
-    max-height: 40vh;
-    overflow-y: auto;
-    padding: 1rem;
-    background: white;
-    border-radius: 4px;
-    border: 1px solid #eee;
-}
-
-.history-item {
-    padding: 0.5rem;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-}
-
-.user-item {
-    background-color: #e8f5e9;
-}
-
-.ai-item {
-    background-color: #f1f8e9;
-}
-
-.input-area {
-    margin-top: 1.5rem;
-    display: flex;
-    gap: 0.5rem;
-}
-
-input {
-    flex-grow: 1;
-    padding: 0.8rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-input:disabled {
-    background-color: #f5f5f5;
-}
-
-button {
-    padding: 0.8rem 1.5rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 4px;
-    background-color: #42b983;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-button:disabled {
-    background-color: #a5d6a7;
-    cursor: not-allowed;
-}
-
-button:hover:not(:disabled) {
-    background-color: #369f72;
-}
-</style>
