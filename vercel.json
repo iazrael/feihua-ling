@@ -1,0 +1,14 @@
+{
+  "buildCommand": "cd frontend && npm install && npm run build && cd ../api && npm install && npx prisma generate --schema=./schema.prisma",
+  "outputDirectory": "frontend/dist",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/v1/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "file:./prod.db"
+  }
+}

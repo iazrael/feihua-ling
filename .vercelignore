@@ -1,0 +1,15 @@
+node_modules
+.git
+*.log
+.DS_Store
+.env.local
+.env.*.local
+coverage
+*.sqlite
+*.sqlite-journal
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+frontend/dist
+frontend/.vite
+backend/node_modules
+frontend/node_modules

@@ -14,7 +14,8 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix --cache",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",

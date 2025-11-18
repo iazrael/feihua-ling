@@ -1,1 +1,42 @@
-.vscode
+# 依赖
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 开发环境
+.DS_Store
+.env.local
+.env.*.local
+
+# 编辑器
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# 构建产物
+dist/
+build/
+.cache/
+.vite/
+
+# 测试
+coverage/
+
+# 日志
+*.log
+
+# 开发数据库（保留生产数据库）
+backend/dev.db
+backend/dev.db-journal
+backend/*.db-journal
+
+# Prisma
+backend/.env
+
+# 临时文件
+*.tmp
+.temp/
