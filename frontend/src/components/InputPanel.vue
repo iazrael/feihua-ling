@@ -35,6 +35,27 @@
       >
         ⏭️ 跳过
       </button>
+      <button
+        @mousedown="startRecording"
+        @mouseup="stopRecording"
+        @touchstart="startRecording"
+        @touchend="stopRecording"
+        :disabled="disabled || !isRecordingSupported"
+        class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        :class="{ 'bg-red-500 hover:bg-red-600': isRecording }"
+      >
+        🎤 {{ isRecording ? '松开结束' : '按住说话' }}
+      </button>
+    </div>
+
+    <!-- 录音状态指示器 -->
+    <div v-if="isRecording" class="mt-4 p-3 bg-blue-100 text-blue-800 rounded-lg">
+      录音中...请说话
+    </div>
+
+    <!-- 麦克风权限提示 -->
+    <div v-if="!isRecordingSupported" class="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg">
+      您的浏览器不支持录音功能或未授权麦克风权限，请使用最新版Chrome、Firefox或Safari浏览器，并允许麦克风权限。
     </div>
 
     <!-- 提示信息 -->
@@ -50,7 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { audioService } from '@/services/audioService';
+import { recognizeSpeech } from '@/services/speechRecognitionService';
 
 const props = defineProps<{
   disabled?: boolean;
@@ -65,6 +88,13 @@ const emit = defineEmits<{
 const userInput = ref('');
 const hintMessage = ref('');
 const errorMessage = ref('');
+const isRecording = ref(false);
+const isRecordingSupported = ref(false);
+
+// 检查录音支持情况
+onMounted(() => {
+  isRecordingSupported.value = audioService.isRecordingSupported();
+});
 
 const handleSubmit = () => {
   if (userInput.value.trim() && !props.disabled) {
@@ -87,6 +117,42 @@ const handleSkip = () => {
     userInput.value = '';
     hintMessage.value = '';
     errorMessage.value = '';
+  }
+};
+
+// 开始录音
+const startRecording = async () => {
+  if (props.disabled || !isRecordingSupported.value) return;
+  
+  try {
+    await audioService.startRecording();
+    isRecording.value = true;
+    errorMessage.value = '';
+  } catch (error) {
+    console.error('录音启动失败:', error);
+    errorMessage.value = error instanceof Error ? error.message : '录音启动失败';
+  }
+};
+
+// 停止录音并提交识别结果
+const stopRecording = async () => {
+  if (!isRecording.value) return;
+  
+  try {
+    isRecording.value = false;
+    const audioBlob = await audioService.stopRecording();
+    
+    // 调用语音识别服务
+    const recognizedText = await recognizeSpeech(audioBlob);
+    
+    if (recognizedText) {
+      userInput.value = recognizedText;
+      // 自动提交识别结果
+      handleSubmit();
+    }
+  } catch (error) {
+    console.error('录音识别失败:', error);
+    errorMessage.value = error instanceof Error ? error.message : '录音识别失败';
   }
 };
 

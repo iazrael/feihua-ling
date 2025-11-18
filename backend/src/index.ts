@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import { pinyin } from 'pinyin-pro';
 import { distance } from 'fastest-levenshtein';
+import { recognizeSpeech } from './asrService';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -333,6 +334,31 @@ app.post('/api/v1/game/hint', async (req, res) => {
     }
 
     res.json({ hint, sentence: targetSentence });
+});
+
+// API: 语音识别
+app.post('/api/v1/speech/recognize', async (req, res) => {
+    try {
+        const { audioData, audioLength } = req.body;
+        
+        if (!audioData || !audioLength) {
+            return res.status(400).json({ error: '缺少音频数据或长度参数' });
+        }
+        
+        // 调用腾讯云语音识别服务
+        const result = await recognizeSpeech(audioData, audioLength);
+        
+        res.json({ 
+            success: true, 
+            text: result 
+        });
+    } catch (error) {
+        console.error('语音识别API错误:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error instanceof Error ? error.message : '语音识别失败' 
+        });
+    }
 });
 
 app.listen(port, () => {

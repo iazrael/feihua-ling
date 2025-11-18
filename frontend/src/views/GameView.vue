@@ -7,14 +7,22 @@ import InputPanel from '@/components/InputPanel.vue';
 import HistoryList from '@/components/HistoryList.vue';
 import TimerDisplay from '@/components/TimerDisplay.vue';
 import { soundService, SoundType } from '@/services/soundService';
+import { audioService } from '@/services/audioService';
 
 const router = useRouter();
 const gameStore = useGameStore();
 const inputPanelRef = ref<InstanceType<typeof InputPanel> | null>(null);
 
-// 初始化音效服务
+// 初始化音效服务和申请麦克风权限
 onMounted(async () => {
   await soundService.init();
+  
+  // 申请麦克风权限并显示提示信息
+  const permissionGranted = await audioService.requestMicrophonePermission();
+  if (!permissionGranted) {
+    // 如果权限被拒绝，显示提示信息
+    inputPanelRef.value?.showError('麦克风权限被拒绝，无法使用语音输入功能。请在浏览器设置中允许麦克风权限，然后刷新页面。');
+  }
 });
 
 // 如果游戏未开始，跳转回首页
