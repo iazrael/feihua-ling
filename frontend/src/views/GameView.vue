@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '@/stores/game';
 import PoemDisplay from '@/components/PoemDisplay.vue';
 import InputPanel from '@/components/InputPanel.vue';
 import HistoryList from '@/components/HistoryList.vue';
+import TimerDisplay from '@/components/TimerDisplay.vue';
+import { soundService, SoundType } from '@/services/soundService';
 
 const router = useRouter();
 const gameStore = useGameStore();
 const inputPanelRef = ref<InstanceType<typeof InputPanel> | null>(null);
+
+// 初始化音效服务
+onMounted(async () => {
+  await soundService.init();
+});
 
 // 如果游戏未开始，跳转回首页
 if (!gameStore.isPlaying) {
@@ -25,7 +32,16 @@ const handleSubmit = async (sentence: string) => {
     const result = await gameStore.verifyUserSentence(sentence);
     
     if (!result.valid) {
-      inputPanelRef.value?.showError(result.message || '答案错误');
+      // 播放错误音效
+      if (gameStore.remainingChances > 0) {
+        soundService.play(SoundType.WRONG);
+      } else {
+        soundService.play(SoundType.GAME_OVER);
+      }
+      
+      // 显示错误消息
+      const errorMessage = result.message || '答案错误';
+      inputPanelRef.value?.showError(errorMessage);
       
       if (gameStore.remainingChances <= 0) {
         // 游戏结束
@@ -33,10 +49,21 @@ const handleSubmit = async (sentence: string) => {
           router.push('/result');
         }, 1500);
       }
+    } else {
+      // 播放正确音效
+      soundService.play(SoundType.CORRECT);
+      
+      // 如果是模糊匹配，显示提示
+      if (result.matchType === 'homophone' || result.matchType === 'fuzzy') {
+        const hint = result.message + '\n' + 
+          (result.correctedSentence ? `标准诗句：${result.correctedSentence}` : '');
+        inputPanelRef.value?.showHint(hint);
+      }
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('你赢了')) {
       // AI输了，玩家获胜
+      soundService.play(SoundType.CORRECT);
       setTimeout(() => {
         router.push('/result');
       }, 1500);
@@ -58,6 +85,7 @@ const handleHint = async () => {
 const handleSkip = () => {
   gameStore.skipRound();
   if (gameStore.remainingChances <= 0) {
+    soundService.play(SoundType.GAME_OVER);
     router.push('/result');
   }
 };
@@ -66,6 +94,14 @@ const handleQuit = () => {
   if (confirm('确定要退出游戏吗？')) {
     gameStore.endGame();
     router.push('/');
+  }
+};
+
+const handleTimeout = () => {
+  if (gameStore.remainingChances <= 0) {
+    setTimeout(() => {
+      router.push('/result');
+    }, 1500);
   }
 };
 </script>
@@ -98,6 +134,9 @@ const handleQuit = () => {
           退出游戏
         </button>
       </div>
+
+      <!-- 倒计时显示 -->
+      <TimerDisplay @timeout="handleTimeout" />
 
       <!-- 主游戏区域 -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

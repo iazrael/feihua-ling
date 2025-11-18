@@ -17,8 +17,18 @@ export const useGameStore = defineStore('game', {
       wrong: 0,
       hintsUsed: 0,
       startTime: 0,
+      timeoutCount: 0,
+      fuzzyMatchCount: 0,
+      averageResponseTime: 0,
+      fastestResponse: 0,
+      perfectRounds: 0,
     },
     currentHintLevel: 0,
+    timeRemaining: 10,
+    timerActive: false,
+    roundStartTime: 0,
+    soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+    soundVolume: parseFloat(localStorage.getItem('soundVolume') || '0.8'),
   }),
 
   getters: {
@@ -30,6 +40,41 @@ export const useGameStore = defineStore('game', {
   },
 
   actions: {
+    // 设置音效
+    setSoundEnabled(enabled: boolean) {
+      this.soundEnabled = enabled;
+      localStorage.setItem('soundEnabled', String(enabled));
+    },
+
+    setSoundVolume(volume: number) {
+      this.soundVolume = volume;
+      localStorage.setItem('soundVolume', String(volume));
+    },
+
+    // 启动倒计时
+    startTimer() {
+      this.timeRemaining = 10;
+      this.timerActive = true;
+      this.roundStartTime = Date.now();
+    },
+
+    // 停止倒计时
+    stopTimer() {
+      this.timerActive = false;
+    },
+
+    // 更新剩余时间
+    updateTimeRemaining(time: number) {
+      this.timeRemaining = time;
+    },
+
+    // 处理超时
+    handleTimeout() {
+      this.stopTimer();
+      this.remainingChances--;
+      this.stats.timeoutCount++;
+      this.stats.wrong++;
+    },
     // 开始新游戏
     async startGame(keyword: string) {
       try {
@@ -60,6 +105,11 @@ export const useGameStore = defineStore('game', {
           wrong: 0,
           hintsUsed: 0,
           startTime: Date.now(),
+          timeoutCount: 0,
+          fuzzyMatchCount: 0,
+          averageResponseTime: 0,
+          fastestResponse: 0,
+          perfectRounds: 0,
         };
 
         // 添加AI的首句
@@ -72,6 +122,9 @@ export const useGameStore = defineStore('game', {
         };
         this.history.push(aiSentence);
         this.usedPoems.push(data.firstSentence.content);
+
+        // 启动倒计时
+        this.startTimer();
 
         return data;
       } catch (error) {
@@ -96,6 +149,10 @@ export const useGameStore = defineStore('game', {
         const data = await response.json();
 
         if (data.valid) {
+          // 停止计时器并计算响应时间
+          this.stopTimer();
+          const responseTime = (Date.now() - this.roundStartTime) / 1000;
+          
           // 答对了
           const userSentence: HistoryItem = {
             round: this.currentRound,
@@ -109,6 +166,29 @@ export const useGameStore = defineStore('game', {
           this.usedPoems.push(sentence);
           this.stats.correct++;
           this.stats.totalRounds++;
+          
+          // 记录模糊匹配
+          if (data.matchType === 'homophone' || data.matchType === 'fuzzy') {
+            this.stats.fuzzyMatchCount++;
+          }
+          
+          // 更新响应时间统计
+          if (this.stats.averageResponseTime === 0) {
+            this.stats.averageResponseTime = responseTime;
+          } else {
+            this.stats.averageResponseTime = 
+              (this.stats.averageResponseTime * (this.stats.correct - 1) + responseTime) / this.stats.correct;
+          }
+          
+          if (this.stats.fastestResponse === 0 || responseTime < this.stats.fastestResponse) {
+            this.stats.fastestResponse = responseTime;
+          }
+          
+          // 记录完美回合（无提示、无错误、首次答对）
+          if (this.currentHintLevel === 0 && this.remainingChances === 3) {
+            this.stats.perfectRounds++;
+          }
+          
           this.currentHintLevel = 0; // 重置提示级别
           this.remainingChances = 3; // 重置机会
 
@@ -121,6 +201,7 @@ export const useGameStore = defineStore('game', {
           
           if (this.remainingChances <= 0) {
             // 游戏结束
+            this.stopTimer();
             this.endGame();
           }
         }
@@ -146,6 +227,7 @@ export const useGameStore = defineStore('game', {
 
         if (!response.ok) {
           // AI输了
+          this.stopTimer();
           this.endGame(true);
           throw new Error('AI也想不出来了，你赢了！');
         }
@@ -163,6 +245,9 @@ export const useGameStore = defineStore('game', {
         this.history.push(aiSentence);
         this.usedPoems.push(data.sentence);
 
+        // AI出句后启动倒计时
+        this.startTimer();
+
         return data;
       } catch (error) {
         console.error('AI出句失败:', error);
@@ -173,6 +258,9 @@ export const useGameStore = defineStore('game', {
     // 获取提示
     async getHint() {
       try {
+        // 暂停倒计时
+        this.stopTimer();
+        
         this.currentHintLevel++;
         this.stats.hintsUsed++;
 
@@ -186,9 +274,17 @@ export const useGameStore = defineStore('game', {
         });
 
         const data = await response.json();
+        
+        // 显示提示后恢复倒计时
+        setTimeout(() => {
+          this.startTimer();
+        }, 2000);
+        
         return data;
       } catch (error) {
         console.error('获取提示失败:', error);
+        // 错误时也恢复倒计时
+        this.startTimer();
         throw error;
       }
     },

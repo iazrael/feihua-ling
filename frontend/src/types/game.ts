@@ -22,6 +22,11 @@ export interface GameStats {
   hintsUsed: number;
   startTime: number;
   endTime?: number;
+  timeoutCount: number;
+  fuzzyMatchCount: number;
+  averageResponseTime: number;
+  fastestResponse: number;
+  perfectRounds: number;
 }
 
 export interface GameState {
@@ -33,4 +38,9 @@ export interface GameState {
   usedPoems: string[];
   stats: GameStats;
   currentHintLevel: number;
+  timeRemaining: number;
+  timerActive: boolean;
+  roundStartTime: number;
+  soundEnabled: boolean;
+  soundVolume: number;
 }

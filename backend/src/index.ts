@@ -1,6 +1,8 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
+import { pinyin } from 'pinyin-pro';
+import { distance } from 'fastest-levenshtein';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -30,6 +32,34 @@ app.get('/api/v1/game/random-char', async (req, res) => {
     res.json({ char: randomChar });
 });
 
+// 辅助函数：移除标点符号和空格
+function cleanSentence(sentence: string): string {
+    return sentence.replace(/[，。！？；：、\s]/g, '');
+}
+
+// 辅助函数：获取拼音（无声调）
+function getPinyin(text: string): string {
+    return pinyin(text, { toneType: 'none', type: 'array' }).join('');
+}
+
+// 辅助函数：查找差异字符
+function findDifferences(input: string, correct: string): Array<{ position: number; input: string; correct: string }> {
+    const differences: Array<{ position: number; input: string; correct: string }> = [];
+    const maxLen = Math.max(input.length, correct.length);
+    
+    for (let i = 0; i < maxLen; i++) {
+        if (input[i] !== correct[i]) {
+            differences.push({
+                position: i,
+                input: input[i] || '',
+                correct: correct[i] || ''
+            });
+        }
+    }
+    
+    return differences;
+}
+
 // API: 验证用户诗句
 app.post('/api/v1/game/verify', async (req, res) => {
     const { sentence, char, usedPoems } = req.body;
@@ -38,16 +68,20 @@ app.post('/api/v1/game/verify', async (req, res) => {
         return res.status(400).json({ error: '缺少参数' });
     }
 
-    if (!sentence.includes(char)) {
-        return res.json({ valid: false, message: '诗句中不包含令字' });
+    // 清理输入的诗句
+    const cleanedInput = cleanSentence(sentence);
+
+    if (!cleanedInput.includes(char)) {
+        return res.json({ valid: false, message: '诗句中不包含令字', matchType: 'none' });
     }
 
-    if (usedPoems && usedPoems.includes(sentence)) {
-        return res.json({ valid: false, message: '这句诗已经用过了' });
+    // 检查是否已使用（精确匹配）
+    if (usedPoems && usedPoems.some((used: string) => cleanSentence(used) === cleanedInput)) {
+        return res.json({ valid: false, message: '这句诗已经用过了', matchType: 'none' });
     }
 
-    // 使用更精确的查询来验证诗句
-    const poem = await prisma.poem.findFirst({
+    // 1. 精确匹配
+    const exactMatch = await prisma.poem.findFirst({
         where: { 
             content: { 
                 contains: sentence
@@ -56,23 +90,95 @@ app.post('/api/v1/game/verify', async (req, res) => {
         select: {
             id: true,
             title: true,
-            author: true
+            author: true,
+            content: true
         }
     });
 
-    if (poem) {
-        res.json({ 
+    if (exactMatch) {
+        return res.json({ 
             valid: true, 
             message: '验证成功',
+            matchType: 'exact',
             poem: {
-                id: poem.id,
-                title: poem.title,
-                author: poem.author
+                id: exactMatch.id,
+                title: exactMatch.title,
+                author: exactMatch.author
             }
         });
-    } else {
-        res.json({ valid: false, message: '诗词库中没有找到这句诗' });
     }
+
+    // 2. 模糊匹配：查找所有包含令字的诗句
+    const candidatePoems = await prisma.poem.findMany({
+        where: {
+            content: {
+                contains: char
+            }
+        },
+        select: {
+            id: true,
+            title: true,
+            author: true,
+            content: true
+        },
+        take: 1000
+    });
+
+    // 获取输入的拼音
+    const inputPinyin = getPinyin(cleanedInput);
+
+    for (const poem of candidatePoems) {
+        // 分割诗句
+        const sentences = poem.content.split(/[，。！？；]/).filter(s => s.length > 0);
+        
+        for (const poemSentence of sentences) {
+            const cleanedPoem = cleanSentence(poemSentence);
+            
+            // 跳过长度差异太大的句子
+            if (Math.abs(cleanedPoem.length - cleanedInput.length) > 2) {
+                continue;
+            }
+
+            // 同音字匹配
+            const poemPinyin = getPinyin(cleanedPoem);
+            if (inputPinyin === poemPinyin) {
+                const differences = findDifferences(cleanedInput, cleanedPoem);
+                return res.json({
+                    valid: true,
+                    message: '虽然有个小错字，但意思对了！',
+                    matchType: 'homophone',
+                    poem: {
+                        id: poem.id,
+                        title: poem.title,
+                        author: poem.author
+                    },
+                    correctedSentence: poemSentence,
+                    differences: differences
+                });
+            }
+
+            // 编辑距离匹配（允许1个字符差异）
+            const editDistance = distance(cleanedInput, cleanedPoem);
+            if (editDistance === 1) {
+                const differences = findDifferences(cleanedInput, cleanedPoem);
+                return res.json({
+                    valid: true,
+                    message: '有一个小错误，但很接近了！',
+                    matchType: 'fuzzy',
+                    poem: {
+                        id: poem.id,
+                        title: poem.title,
+                        author: poem.author
+                    },
+                    correctedSentence: poemSentence,
+                    differences: differences
+                });
+            }
+        }
+    }
+
+    // 没有匹配
+    res.json({ valid: false, message: '诗词库中没有找到这句诗', matchType: 'none' });
 });
 
 // API: AI 生成诗句
