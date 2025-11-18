@@ -11,8 +11,9 @@ datasource db {
 }
 
 model Poem {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   title   String
   author  String
   content String
+  dynasty String? // 新增字段，可为空以保持向后兼容
 }

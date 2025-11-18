@@ -55,30 +55,44 @@ async function main() {
   // 清空现有数据
   await prisma.poem.deleteMany({});
   
-  // 解析CSV数据
-  const csvPath = path.join(__dirname, '唐.csv');
-  const csvData = parseCSV(csvPath);
+  // 支持的朝代列表
+  const dynasties = ['先秦', '汉', '魏晋', '南北朝', '隋', '唐', '宋', '元', '明', '清', '近现代', '当代'];
+  let totalPoems = 0;
   
-  console.log(`Parsed ${csvData.length} poems from CSV`);
-  
-  // 分批插入数据，避免一次性插入太多数据
-  const batchSize = 100;
-  for (let i = 0; i < csvData.length; i += batchSize) {
-    const batch = csvData.slice(i, i + batchSize);
-    const formattedPoems = batch.map(p => ({
-      title: p.title,
-      author: p.author,
-      content: p.content
-    }));
+  // 解析各个朝代的CSV数据
+  for (const dynasty of dynasties) {
+    const csvPath = path.join(__dirname, `${dynasty}.csv`);
     
-    await prisma.poem.createMany({
-      data: formattedPoems
-    });
+    // 检查文件是否存在
+    if (!fs.existsSync(csvPath)) {
+      console.log(`CSV file for ${dynasty} not found, skipping...`);
+      continue;
+    }
     
-    console.log(`Seeded batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(csvData.length/batchSize)}`);
+    const csvData = parseCSV(csvPath);
+    totalPoems += csvData.length;
+    console.log(`Parsed ${csvData.length} poems from ${dynasty} CSV`);
+    
+    // 分批插入数据，避免一次性插入太多数据
+    const batchSize = 100;
+    for (let i = 0; i < csvData.length; i += batchSize) {
+      const batch = csvData.slice(i, i + batchSize);
+      const formattedPoems = batch.map(p => ({
+        title: p.title,
+        author: p.author,
+        content: p.content,
+        dynasty: p.dynasty  // 添加朝代字段
+      }));
+      
+      await prisma.poem.createMany({
+        data: formattedPoems
+      });
+      
+      console.log(`Seeded ${dynasty} batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(csvData.length/batchSize)}`);
+    }
   }
   
-  console.log(`Seeding finished. Total poems: ${csvData.length}`);
+  console.log(`Seeding finished. Total poems: ${totalPoems}`);
 }
 
 main()
