@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onUnmounted } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
 import { useGameStore } from '@/stores/game';
 import { soundService, SoundType } from '@/services/soundService';
 
@@ -29,6 +29,13 @@ const progressColorClass = computed(() => {
   if (time <= 2) return 'bg-red-500';
   if (time <= 5) return 'bg-yellow-500';
   return 'bg-green-500';
+});
+
+// 组件挂载时检查是否需要启动倒计时
+onMounted(() => {
+  if (gameStore.timerActive) {
+    startCountdown();
+  }
 });
 
 // 监听计时器激活状态
