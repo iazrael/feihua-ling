@@ -4,7 +4,12 @@ import cors from 'cors';
 import { pinyin } from 'pinyin-pro';
 import { distance } from 'fastest-levenshtein';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// 解决 ES Module 中 __dirname 的问题
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // 检查数据库文件是否存在
 const dbPath = join(__dirname, 'prod.db');
