@@ -40,3 +40,4 @@ backend/.env
 # 临时文件
 *.tmp
 .temp/
+.vercel
