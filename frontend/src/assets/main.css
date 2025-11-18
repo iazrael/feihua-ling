@@ -1,1 +1,19 @@
-/* Clear default styles */
+@import "tailwindcss";
+
+/* Tailwind v4 主题配置 */
+@theme {
+  --color-primary-light: #e8f4f8;
+  --color-primary: #1e3a5f;
+  --color-primary-dark: #0f1f3d;
+  
+  --color-accent-light: #f5e6d3;
+  --color-accent: #d4af37;
+  --color-accent-dark: #b8941f;
+  
+  --font-family-serif: 'KaiTi', 'STKaiti', '楷体', serif;
+}
+
+/* 中国风主题自定义样式 */
+body {
+  font-family: var(--font-family-serif), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

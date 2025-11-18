@@ -3,16 +3,9 @@ import { RouterView } from 'vue-router'
 </script>
 
 <template>
-    <div id="app-container">
-        <RouterView />
-    </div>
+    <RouterView />
 </template>
 
 <style scoped>
-#app-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
+/* 移除 app-container 的限制性样式，让各个视图自由控制布局 */
 </style>
