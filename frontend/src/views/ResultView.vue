@@ -16,12 +16,6 @@ onMounted(() => {
   soundService.play(SoundType.RESULT);
 });
 
-const formatDuration = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return minutes > 0 ? `${minutes}分${secs}秒` : `${secs}秒`;
-};
-
 const handlePlayAgain = () => {
   gameStore.resetGame();
   router.push('/');
@@ -122,7 +116,7 @@ const handleShare = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-pink-100 via-yellow-100 to-blue-100 flex items-center justify-center p-6">
+  <div class="min-h-screen flex items-center justify-center p-6" style="background: linear-gradient(to bottom right, #fce7f3, #fef9c3, #dbeafe);">
     <div class="max-w-4xl w-full">
       <!-- 结算卡片 -->
       <div ref="shareCardRef" class="mb-6 flex justify-center">
@@ -134,14 +128,16 @@ const handleShare = async () => {
         <button
           @click="handleSaveImage"
           :disabled="isGenerating"
-          class="px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold text-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          class="px-8 py-4 text-white rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          style="background: linear-gradient(to right, #22c55e, #16a34a);"
         >
           {{ isGenerating ? '生成中...' : '💾 保存图片' }}
         </button>
         <button
           @click="handleShare"
           :disabled="isGenerating"
-          class="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          class="px-8 py-4 text-white rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          style="background: linear-gradient(to right, #3b82f6, #2563eb);"
         >
           📤 分享成绩
         </button>
@@ -151,13 +147,15 @@ const handleShare = async () => {
       <div class="flex gap-4 justify-center">
         <button
           @click="handlePlayAgain"
-          class="flex-1 max-w-xs py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+          class="flex-1 max-w-xs py-4 text-white rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+          style="background: linear-gradient(to right, #a855f7, #9333ea);"
         >
           🎮 再来一局
         </button>
         <button
           @click="handleBackHome"
-          class="flex-1 max-w-xs py-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl font-semibold text-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+          class="flex-1 max-w-xs py-4 text-white rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+          style="background: linear-gradient(to right, #6b7280, #4b5563);"
         >
           🏠 返回首页
         </button>
@@ -174,7 +172,7 @@ const handleShare = async () => {
             v-for="item in gameStore.history"
             :key="`${item.round}-${item.speaker}`"
             class="p-4 rounded-xl transition-transform hover:scale-102"
-            :class="item.speaker === 'AI' ? 'bg-gradient-to-r from-green-50 to-green-100' : 'bg-gradient-to-r from-blue-50 to-blue-100'"
+            :style="item.speaker === 'AI' ? 'background: linear-gradient(to right, #f0fdf4, #dcfce7);' : 'background: linear-gradient(to right, #eff6ff, #dbeafe);'"
           >
             <div class="text-sm font-semibold mb-2" :class="item.speaker === 'AI' ? 'text-green-700' : 'text-blue-700'">
               {{ item.speaker }} - 第{{ item.round }}回合
