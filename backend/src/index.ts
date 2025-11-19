@@ -3,9 +3,16 @@ import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import { pinyin } from 'pinyin-pro';
 import { distance } from 'fastest-levenshtein';
-import { recognizeSpeech } from './asrService';
+import { recognizeSpeech } from './asrService.js';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.PRISMA_DATABASE_URL || 'file:./dev.db'
+    }
+  }
+});
+
 const app = express();
 const port = process.env.PORT || 3000;
 

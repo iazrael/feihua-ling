@@ -1,4 +1,3 @@
-
 # 飞花令项目
 
 这是一个使用 Vue3 + TypeScript 开发的飞花令 H5 应用，支持手机和平板访问，提供人机对战古诗词飞花令游戏。
@@ -25,7 +24,7 @@
 ### 后端
 - **运行环境**: Node.js
 - **框架**: Express
-- **数据库**: SQLite + Prisma ORM
+- **数据库**: PostgreSQL + Prisma ORM（原SQLite）
 - **工具库**: pinyin-pro（拼音处理）、fastest-levenshtein（编辑距离计算）
 
 ## 📦 项目结构
@@ -81,12 +80,17 @@ cd feihua_ling
 
 ```bash
 # 在项目根目录执行
+# 首先设置环境变量
+export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+
+# 然后运行启动脚本
 ./start-dev.sh
 ```
 
 该脚本会：
 - 自动检查并安装前后端依赖
-- 初始化数据库（如果尚未初始化）
+- 使用远程 PostgreSQL 数据库（不再使用本地 SQLite）
 - 同时启动前后端开发服务器
 
 #### 3. 手动安装依赖（可选）
@@ -105,27 +109,19 @@ npm install
 
 #### 4. 配置环境变量
 
-在 `backend` 目录下创建 `.env` 文件：
-
-```env
-DATABASE_URL="file:./dev.db"
-```
-
-#### 5. 初始化数据库
+在运行任何脚本之前，需要设置以下环境变量：
 
 ```bash
-cd backend
+# 数据库连接URL
+export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+```
 
-# 生成 Prisma Client
-npx prisma generate
+或者创建一个 `.env` 文件在项目根目录：
 
-# 运行数据库迁移
-npx prisma migrate deploy
-
-# 导入诗词数据（选择以下之一）
-npm run seed       # 使用 seed.ts
-# 或
-npm run seed:new   # 使用 seedNew.ts（推荐）
+```env
+DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 ```
 
 #### 5. 准备 Vercel 部署（可选）
@@ -133,14 +129,18 @@ npm run seed:new   # 使用 seedNew.ts（推荐）
 如果要部署到 Vercel，运行部署准备脚本：
 
 ```bash
-# 在项目根目录执行
+# 首先设置环境变量
+export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+
+# 然后运行部署准备脚本
 ./deploy-prepare.sh
 ```
 
 该脚本会自动完成以下任务：
 - 安装所有依赖
-- 生成数据库文件
-- 复制数据库到 API 目录
+- 生成 Prisma Client
+- 运行数据库迁移
 - 测试前端构建
 
 #### 6. 启动开发服务器
@@ -182,7 +182,8 @@ npm run dev        # 默认运行在 http://localhost:5173
    
    | 变量名 | 值 | 说明 |
    |--------|-----|------|
-   | `DATABASE_URL` | `file:./prod.db` | 生产环境数据库路径 |
+   | `DATABASE_URL` | `postgres://username:password@host:port/database?sslmode=require` | 远程数据库连接字符串 |
+   | `PRISMA_DATABASE_URL` | `postgres://username:password@host:port/database?sslmode=require` | Prisma 数据库连接字符串 |
    | `NODE_ENV` | `production` | 运行环境 |
 
 5. **部署**
@@ -212,6 +213,11 @@ vercel login
 
 ```bash
 # 在项目根目录执行
+# 首先设置环境变量
+export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
+
+# 然后运行部署准备脚本
 ./deploy-prepare.sh
 ```
 
@@ -234,7 +240,11 @@ vercel
 ```bash
 # 添加数据库 URL
 vercel env add DATABASE_URL production
-# 输入值: file:./prod.db
+# 输入值: postgres://username:password@host:port/database?sslmode=require
+
+# 添加 Prisma 数据库 URL
+vercel env add PRISMA_DATABASE_URL production
+# 输入值: postgres://username:password@host:port/database?sslmode=require
 
 # 添加 Node 环境
 vercel env add NODE_ENV production
@@ -258,23 +268,14 @@ vercel --prod
   - 其他请求转发到前端静态页面
 - **环境变量**：自动注入配置的环境变量
 
-### 数据库初始化（重要）
+### 数据库配置（重要）
 
-⚠️ **首次部署后需要初始化数据库**
+⚠️ **项目现在使用远程 PostgreSQL 数据库而不是本地 SQLite**
 
-Vercel Serverless 环境下，需要手动运行数据初始化：
-
-```bash
-# 方案一：本地初始化后上传数据库文件
-cd backend
-npm run seed:new
-# 将生成的 dev.db 文件重命名为 prod.db
-# 提交到 Git 并重新部署
-
-# 方案二：使用云数据库（推荐生产环境）
-# 可以考虑使用 Vercel Postgres、PlanetScale 等云数据库服务
-# 修改 DATABASE_URL 环境变量为云数据库连接字符串
-```
+在部署之前，需要确保：
+1. 有一个可用的 PostgreSQL 数据库实例
+2. 正确配置了 `DATABASE_URL` 和 `PRISMA_DATABASE_URL` 环境变量
+3. 数据库已经初始化并导入了诗词数据
 
 ### 自动部署
 
@@ -434,15 +435,14 @@ chore: 构建/工具链相关
 - 检查前端 API 请求地址配置
 - 后端已启用 CORS，无需额外配置
 
-### 2. 数据库查询为空
+### 2. 数据库连接失败
 
-**问题**：API 返回 "诗词库为空"
+**问题**：无法连接到远程数据库
 
 **解决方案**：
-```bash
-cd backend
-npm run seed:new  # 重新导入诗词数据
-```
+- 检查 `DATABASE_URL` 和 `PRISMA_DATABASE_URL` 环境变量是否正确设置
+- 确保数据库服务器可访问
+- 检查数据库凭据是否正确
 
 ### 3. Prisma Client 错误
 

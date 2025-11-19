@@ -6,13 +6,17 @@
 - GitHub 账号
 - Vercel 账号（可用 GitHub 登录）
 
-### 2. 准备数据库文件和环境变量
+### 2. 准备数据库和环境变量
 
-在部署之前，需要准备一个包含诗词数据的 SQLite 数据库文件和正确的环境变量配置：
+在部署之前，需要准备一个远程 PostgreSQL 数据库和正确的环境变量配置：
 
 ```bash
 # 在项目根目录执行
-# 1. 准备数据库
+# 1. 设置环境变量
+export DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+export PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+
+# 2. 准备部署文件
 cd backend
 
 # 安装依赖
@@ -24,15 +28,9 @@ npx prisma generate
 # 运行数据库迁移
 npx prisma migrate deploy
 
-# 导入诗词数据
-npm run seed:new
-
-# 将生成的数据库文件复制到 api 目录
-cp dev.db ../api/prod.db
-
 cd ..
 
-# 2. 创建前端生产环境变量
+# 3. 创建前端生产环境变量
 mkdir -p frontend
 cd frontend
 cat > .env.production << EOF
@@ -65,7 +63,11 @@ git push origin main
 在项目设置中添加环境变量：
 
 - **变量名**: `DATABASE_URL`
-- **值**: `file:./prod.db`
+- **值**: `postgres://username:password@host:port/database?sslmode=require`
+- **适用范围**: Production, Preview, Development
+
+- **变量名**: `PRISMA_DATABASE_URL`
+- **值**: `postgres://username:password@host:port/database?sslmode=require`
 - **适用范围**: Production, Preview, Development
 
 ### 步骤 4：部署
@@ -96,13 +98,15 @@ vercel login
 ### 步骤 3：准备数据库
 
 ```bash
-# 确保 api/prod.db 存在
+# 设置环境变量
+export DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+export PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+
+# 确保后端依赖已安装
 cd backend
 npm install
 npx prisma generate
 npx prisma migrate deploy
-npm run seed:new
-cp dev.db ../api/prod.db
 cd ..
 
 # 确保前端环境变量配置正确
@@ -131,10 +135,16 @@ vercel
 
 ```bash
 vercel env add DATABASE_URL production
-# 输入值: file:./prod.db
+# 输入值: postgres://username:password@host:port/database?sslmode=require
+
+vercel env add PRISMA_DATABASE_URL production
+# 输入值: postgres://username:password@host:port/database?sslmode=require
 
 vercel env add DATABASE_URL preview
-# 输入值: file:./prod.db
+# 输入值: postgres://username:password@host:port/database?sslmode=require
+
+vercel env add PRISMA_DATABASE_URL preview
+# 输入值: postgres://username:password@host:port/database?sslmode=require
 ```
 
 ### 步骤 6：生产部署
@@ -163,17 +173,16 @@ vercel --prod
 
 ### 1. API 返回 500 错误
 
-**可能原因**：数据库文件未正确上传
+**可能原因**：数据库连接配置错误
 
 **解决方案**：
 ```bash
-# 确保 api/prod.db 存在且包含数据
-cd backend
-npm run seed:new
-cp dev.db ../api/prod.db
-git add api/prod.db
-git commit -m "chore: 添加生产数据库"
-git push
+# 确保环境变量正确设置
+export DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+export PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
+
+# 重新部署
+vercel --prod
 ```
 
 ### 2. 构建失败
@@ -226,7 +235,6 @@ vercel --prod
    - 为静态资源配置缓存策略
    
 3. **数据库优化**
-   - 考虑迁移到云数据库（如 Vercel Postgres、PlanetScale）
    - 为生产环境添加数据库索引
 
 4. **CDN 加速**
@@ -235,8 +243,8 @@ vercel --prod
 ## 注意事项
 
 ⚠️ **重要**：
-- SQLite 在 Serverless 环境下是只读的，无法写入数据
-- 如需支持用户数据持久化，建议迁移到云数据库
+- 项目现在使用远程 PostgreSQL 数据库而不是本地 SQLite
+- 确保数据库连接信息正确且可访问
 - 确保 `.gitignore` 中包含敏感信息（如密钥）
 
 ## 下一步

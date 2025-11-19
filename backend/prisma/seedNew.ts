@@ -57,13 +57,14 @@ async function main() {
   // 清空现有数据
   await prisma.poem.deleteMany({});
   
-  // 支持的朝代列表
-  const dynasties = ['秦', '汉', '魏晋', '南北朝', '隋', '唐', '宋_1', '宋_2', '宋_3', '宋_4', '元'];
+  // 获取所有CSV文件
+  const files = fs.readdirSync(dataPath).filter(file => file.endsWith('.csv'));
   let totalPoems = 0;
   
   // 解析各个朝代的CSV数据
-  for (const dynasty of dynasties) {
-    const csvPath = path.join(dataPath, `${dynasty}.csv`);
+  for (const file of files) {
+    const csvPath = path.join(dataPath, file);
+    const dynasty = file.replace('.csv', '');
     
     // 检查文件是否存在
     if (!fs.existsSync(csvPath)) {
