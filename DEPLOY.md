@@ -13,7 +13,6 @@
 ```bash
 # 在项目根目录执行
 # 1. 设置环境变量
-export DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 export PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 
 # 2. 准备部署文件
@@ -62,10 +61,6 @@ git push origin main
 
 在项目设置中添加环境变量：
 
-- **变量名**: `DATABASE_URL`
-- **值**: `postgres://username:password@host:port/database?sslmode=require`
-- **适用范围**: Production, Preview, Development
-
 - **变量名**: `PRISMA_DATABASE_URL`
 - **值**: `postgres://username:password@host:port/database?sslmode=require`
 - **适用范围**: Production, Preview, Development
@@ -99,7 +94,6 @@ vercel login
 
 ```bash
 # 设置环境变量
-export DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 export PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 
 # 确保后端依赖已安装
@@ -134,13 +128,8 @@ vercel
 ### 步骤 5：配置环境变量
 
 ```bash
-vercel env add DATABASE_URL production
-# 输入值: postgres://username:password@host:port/database?sslmode=require
 
 vercel env add PRISMA_DATABASE_URL production
-# 输入值: postgres://username:password@host:port/database?sslmode=require
-
-vercel env add DATABASE_URL preview
 # 输入值: postgres://username:password@host:port/database?sslmode=require
 
 vercel env add PRISMA_DATABASE_URL preview
@@ -178,7 +167,6 @@ vercel --prod
 **解决方案**：
 ```bash
 # 确保环境变量正确设置
-export DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 export PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 
 # 重新部署

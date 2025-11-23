@@ -13,12 +13,6 @@ if [ -z "$PRISMA_DATABASE_URL" ]; then
   exit 1
 fi
 
-if [ -z "$DATABASE_URL" ]; then
-  echo "❌ 错误: 请设置 DATABASE_URL 环境变量"
-  echo "示例: export DATABASE_URL=\"postgres://username:password@host:port/database?sslmode=require\""
-  exit 1
-fi
-
 # 检查是否已安装依赖
 echo "📦 检查依赖..."
 

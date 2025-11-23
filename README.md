@@ -81,7 +81,6 @@ cd feihua_ling
 ```bash
 # 在项目根目录执行
 # 首先设置环境变量
-export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 
 # 然后运行启动脚本
@@ -113,14 +112,12 @@ npm install
 
 ```bash
 # 数据库连接URL
-export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 ```
 
 或者创建一个 `.env` 文件在项目根目录：
 
 ```env
-DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=require
 ```
 
@@ -130,7 +127,6 @@ PRISMA_DATABASE_URL=postgres://username:password@host:port/database?sslmode=requ
 
 ```bash
 # 首先设置环境变量
-export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 
 # 然后运行部署准备脚本
@@ -182,7 +178,6 @@ npm run dev        # 默认运行在 http://localhost:5173
    
    | 变量名 | 值 | 说明 |
    |--------|-----|------|
-   | `DATABASE_URL` | `postgres://username:password@host:port/database?sslmode=require` | 远程数据库连接字符串 |
    | `PRISMA_DATABASE_URL` | `postgres://username:password@host:port/database?sslmode=require` | Prisma 数据库连接字符串 |
    | `NODE_ENV` | `production` | 运行环境 |
 
@@ -214,7 +209,6 @@ vercel login
 ```bash
 # 在项目根目录执行
 # 首先设置环境变量
-export DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 export PRISMA_DATABASE_URL="postgres://username:password@host:port/database?sslmode=require"
 
 # 然后运行部署准备脚本
@@ -238,9 +232,6 @@ vercel
 #### 5. 配置环境变量
 
 ```bash
-# 添加数据库 URL
-vercel env add DATABASE_URL production
-# 输入值: postgres://username:password@host:port/database?sslmode=require
 
 # 添加 Prisma 数据库 URL
 vercel env add PRISMA_DATABASE_URL production
@@ -274,7 +265,7 @@ vercel --prod
 
 在部署之前，需要确保：
 1. 有一个可用的 PostgreSQL 数据库实例
-2. 正确配置了 `DATABASE_URL` 和 `PRISMA_DATABASE_URL` 环境变量
+2. 正确配置了 `PRISMA_DATABASE_URL` 环境变量
 3. 数据库已经初始化并导入了诗词数据
 
 ### 自动部署
@@ -440,7 +431,7 @@ chore: 构建/工具链相关
 **问题**：无法连接到远程数据库
 
 **解决方案**：
-- 检查 `DATABASE_URL` 和 `PRISMA_DATABASE_URL` 环境变量是否正确设置
+- 检查 `PRISMA_DATABASE_URL` 环境变量是否正确设置
 - 确保数据库服务器可访问
 - 检查数据库凭据是否正确
 
