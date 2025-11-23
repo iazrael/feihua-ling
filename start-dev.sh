@@ -6,13 +6,6 @@ set -e  # 遇到错误立即退出
 
 echo "🚀 启动飞花令本地开发环境..."
 
-# 检查环境变量是否设置
-if [ -z "$PRISMA_DATABASE_URL" ]; then
-  echo "❌ 错误: 请设置 PRISMA_DATABASE_URL 环境变量"
-  echo "示例: export PRISMA_DATABASE_URL=\"postgres://username:password@host:port/database?sslmode=require\""
-  exit 1
-fi
-
 # 检查是否已安装依赖
 echo "📦 检查依赖..."
 

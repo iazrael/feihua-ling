@@ -3,7 +3,7 @@ import type { GameState, HistoryItem } from '@/types/game';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-const DEFAULT_TIMER_DURATION = 20; // 默认倒计时20秒
+const DEFAULT_TIMER_DURATION = 30; // 默认倒计时20秒
 
 export const useGameStore = defineStore('game', {
   state: (): GameState => ({
