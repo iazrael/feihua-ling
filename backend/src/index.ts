@@ -3,7 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import { pinyin } from 'pinyin-pro';
 import { distance } from 'fastest-levenshtein';
-import { recognizeSpeech } from './asrService.js';
+import { recognizeSpeech, generateAsrSignature } from './asrService.js';
+import { verifyWithLLM, type ConversationContext } from './llmService.js';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -137,7 +138,7 @@ app.post('/api/v1/game/verify', async (req, res) => {
 
     for (const poem of candidatePoems) {
         // 分割诗句
-        const sentences = poem.content.split(/[，。！？；]/).filter(s => s.length > 0);
+        const sentences = poem.content.split(/[，。！？；]/).filter((s: string) => s.length > 0);
         
         for (const poemSentence of sentences) {
             const cleanedPoem = cleanSentence(poemSentence);
@@ -231,7 +232,7 @@ app.post('/api/v1/game/ai-turn', async (req, res) => {
     // 从包含令字的诗句中提取句子
     const sentences = randomPoem.content
         .split(/[，。！？；]/) // 使用多种标点符号分割
-        .filter(s => s.includes(char) && s.length > 0); // 只保留包含令字且非空的句子
+        .filter((s: string) => s.includes(char) && s.length > 0); // 只保留包含令字且非空的句子
     
     // 如果没有找到包含令字的句子，返回整首诗的第一句
     const sentence = sentences.length > 0 
@@ -277,7 +278,7 @@ app.post('/api/v1/game/start', async (req, res) => {
     const randomPoem = poems[Math.floor(Math.random() * poems.length)];
     const sentences = randomPoem.content
         .split(/[，。！？；]/)
-        .filter(s => s.includes(keyword) && s.length > 0);
+        .filter((s: string) => s.includes(keyword) && s.length > 0);
     
     const sentence = sentences.length > 0 
         ? sentences[0] 
@@ -322,7 +323,7 @@ app.post('/api/v1/game/hint', async (req, res) => {
 
     // 根据提示级别返回不同的提示
     let hint = '';
-    const sentences = poem.content.split(/[，。！？；]/).filter(s => s.includes(keyword) && s.length > 0);
+    const sentences = poem.content.split(/[，。！？；]/).filter((s: string) => s.includes(keyword) && s.length > 0);
     const targetSentence = sentences[0] || '';
 
     switch (hintLevel) {
@@ -342,6 +343,290 @@ app.post('/api/v1/game/hint', async (req, res) => {
 
     res.json({ hint, sentence: targetSentence });
 });
+
+// API: 获取腾讯云 ASR 签名
+app.post('/api/v1/speech/get-signature', async (req, res) => {
+    try {
+        const { audioLength } = req.body;
+        
+        if (!audioLength || typeof audioLength !== 'number') {
+            return res.status(400).json({ 
+                success: false,
+                error: '缺少音频长度参数或参数类型错误' 
+            });
+        }
+        
+        // 生成签名
+        const signatureResult = generateAsrSignature(audioLength);
+        
+        if (!signatureResult.success) {
+            return res.status(500).json(signatureResult);
+        }
+        
+        res.json(signatureResult);
+    } catch (error) {
+        console.error('生成签名API错误:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error instanceof Error ? error.message : '生成签名失败',
+            headers: {},
+            payload: {
+                ProjectId: 0,
+                SubServiceType: 2,
+                EngSerViceType: '16k',
+                SourceType: 1,
+                VoiceFormat: 4,
+                UsrAudioKey: '',
+                DataLen: 0
+            },
+            endpoint: ''
+        });
+    }
+});
+
+// API: 使用 LLM 验证识别文本
+app.post('/api/v1/game/verify-with-llm', async (req, res) => {
+    try {
+        const { recognizedText, keyword, usedPoems, conversationContext } = req.body;
+        
+        if (!recognizedText || !keyword) {
+            return res.status(400).json({ 
+                success: false,
+                valid: false,
+                error: '缺少必要参数' 
+            });
+        }
+        
+        // 清理识别文本
+        const cleanedText = cleanSentence(recognizedText);
+        
+        // 检查是否包含令字
+        if (!cleanedText.includes(keyword)) {
+            return res.json({ 
+                success: true,
+                valid: false,
+                isCorrect: false,
+                message: '识别结果中不包含令字',
+                matchType: 'none'
+            });
+        }
+        
+        // 检查是否已使用（精确匹配）
+        // usedPoems 可能是字符串数组或对象数组
+        const usedPoemsArray = Array.isArray(usedPoems) 
+            ? usedPoems.map((item: any) => {
+                if (typeof item === 'string') return item;
+                if (item && typeof item === 'object' && item.content) return item.content;
+                return '';
+              }).filter((s: string) => s.length > 0)
+            : [];
+        
+        if (usedPoemsArray.some((used: string) => cleanSentence(used) === cleanedText)) {
+            return res.json({ 
+                success: true,
+                valid: false,
+                isCorrect: false,
+                message: '这句诗已经用过了',
+                matchType: 'none'
+            });
+        }
+        
+        // 先尝试精确匹配
+        const exactMatch = await prisma.poem.findFirst({
+            where: { 
+                content: { 
+                    contains: recognizedText
+                }
+            },
+            select: {
+                id: true,
+                title: true,
+                author: true,
+                content: true
+            }
+        });
+
+        if (exactMatch) {
+            return res.json({ 
+                success: true,
+                valid: true,
+                isCorrect: true,
+                message: '识别正确！',
+                matchType: 'exact',
+                correctedSentence: recognizedText,
+                poem: {
+                    id: exactMatch.id,
+                    title: exactMatch.title,
+                    author: exactMatch.author
+                }
+            });
+        }
+        
+        // 使用 LLM 进行宽松判断
+        try {
+            const llmResult = await verifyWithLLM(
+                recognizedText,
+                keyword,
+                usedPoemsArray,
+                conversationContext as ConversationContext | undefined
+            );
+            
+            if (!llmResult.isCorrect) {
+                return res.json({
+                    success: true,
+                    valid: false,
+                    isCorrect: false,
+                    message: llmResult.reason || '识别内容不是有效诗句',
+                    matchType: 'none'
+                });
+            }
+            
+            // LLM 判断正确，需要在数据库中验证修正后的诗句
+            const correctedSentence = llmResult.correctedSentence || recognizedText;
+            const cleanedCorrected = cleanSentence(correctedSentence);
+            
+            // 检查修正后的诗句是否已使用
+            if (usedPoemsArray.some((used: string) => cleanSentence(used) === cleanedCorrected)) {
+                return res.json({ 
+                    success: true,
+                    valid: false,
+                    isCorrect: false,
+                    message: '修正后的诗句已经用过了',
+                    matchType: 'none'
+                });
+            }
+            
+            // 在数据库中验证修正后的诗句
+            const dbMatch = await prisma.poem.findFirst({
+                where: {
+                    content: {
+                        contains: correctedSentence
+                    }
+                },
+                select: {
+                    id: true,
+                    title: true,
+                    author: true,
+                    content: true
+                }
+            });
+            
+            if (!dbMatch) {
+                // 数据库中没有找到，降级到原有验证逻辑
+                console.log('数据库中未找到 LLM 修正的诗句，降级到原有逻辑');
+                return fallbackToOriginalVerify(recognizedText, keyword, usedPoems, res);
+            }
+            
+            // 验证通过
+            return res.json({
+                success: true,
+                valid: true,
+                isCorrect: true,
+                message: recognizedText === correctedSentence 
+                    ? '识别正确！'
+                    : `识别结果与诗句基本一致，判定正确！\n标准诗句：${correctedSentence}`,
+                matchType: 'llm_fuzzy',
+                correctedSentence,
+                poem: {
+                    id: dbMatch.id,
+                    title: dbMatch.title,
+                    author: dbMatch.author
+                },
+                llmConfidence: llmResult.confidence
+            });
+        } catch (llmError) {
+            // LLM 服务异常，降级到原有验证逻辑
+            console.error('LLM 服务异常，降级到原有验证逻辑:', llmError);
+            return fallbackToOriginalVerify(recognizedText, keyword, usedPoems, res);
+        }
+    } catch (error) {
+        console.error('验证API错误:', error);
+        res.status(500).json({ 
+            success: false,
+            valid: false,
+            error: error instanceof Error ? error.message : '验证失败' 
+        });
+    }
+});
+
+// 降级到原有验证逻辑（拼音 + 编辑距离）
+async function fallbackToOriginalVerify(sentence: string, char: string, usedPoems: string[], res: express.Response) {
+    const cleanedInput = cleanSentence(sentence);
+    
+    // 查找所有包含令字的诗句
+    const candidatePoems = await prisma.poem.findMany({
+        where: {
+            content: {
+                contains: char
+            }
+        },
+        select: {
+            id: true,
+            title: true,
+            author: true,
+            content: true
+        },
+        take: 1000
+    });
+
+    const inputPinyin = getPinyin(cleanedInput);
+
+    for (const poem of candidatePoems) {
+        const sentences = poem.content.split(/[\uff0c\u3002\uff01\uff1f\uff1b]/).filter((s: string) => s.length > 0);
+        
+        for (const poemSentence of sentences) {
+            const cleanedPoem = cleanSentence(poemSentence);
+            
+            if (Math.abs(cleanedPoem.length - cleanedInput.length) > 2) {
+                continue;
+            }
+
+            // 同音字匹配
+            const poemPinyin = getPinyin(cleanedPoem);
+            if (inputPinyin === poemPinyin) {
+                return res.json({
+                    success: true,
+                    valid: true,
+                    isCorrect: true,
+                    message: '虔然有个小错字，但意思对了！',
+                    matchType: 'homophone',
+                    poem: {
+                        id: poem.id,
+                        title: poem.title,
+                        author: poem.author
+                    },
+                    correctedSentence: poemSentence
+                });
+            }
+
+            // 编辑距离匹配
+            const editDistance = distance(cleanedInput, cleanedPoem);
+            if (editDistance === 1) {
+                return res.json({
+                    success: true,
+                    valid: true,
+                    isCorrect: true,
+                    message: '有一个小错误，但很接近了！',
+                    matchType: 'fuzzy',
+                    poem: {
+                        id: poem.id,
+                        title: poem.title,
+                        author: poem.author
+                    },
+                    correctedSentence: poemSentence
+                });
+            }
+        }
+    }
+
+    return res.json({ 
+        success: true,
+        valid: false,
+        isCorrect: false,
+        message: '诗词库中没有找到这句诗',
+        matchType: 'none'
+    });
+}
 
 // API: 语音识别
 app.post('/api/v1/speech/recognize', async (req, res) => {

@@ -96,3 +96,83 @@ export async function recognizeSpeech(base64Audio: string, audioLength: number):
     throw new Error('语音识别失败: ' + (error instanceof Error ? error.message : '未知错误'));
   }
 }
+
+// 为前端生成腾讯云 ASR 签名
+export function generateAsrSignature(audioLength: number): {
+  success: boolean;
+  headers: Record<string, string>;
+  payload: {
+    ProjectId: number;
+    SubServiceType: number;
+    EngSerViceType: string;
+    SourceType: number;
+    VoiceFormat: number;
+    UsrAudioKey: string;
+    DataLen: number;
+  };
+  endpoint: string;
+  error?: string;
+} {
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+    const usrAudioKey = 'session-' + Date.now();
+    
+    // 构造请求体模板（不包含 Data 字段）
+    const payloadTemplate = {
+      ProjectId: 0,
+      SubServiceType: 2,
+      EngSerViceType: '16k',
+      SourceType: 1,
+      VoiceFormat: 4,
+      UsrAudioKey: usrAudioKey,
+      DataLen: audioLength
+    };
+    
+    // 注意：签名需要包含 Data 字段的占位符
+    // 但由于 Data 字段会很大，我们让前端添加，后端只用空字符串计算签名
+    const payloadForSignature = {
+      ...payloadTemplate,
+      Data: '' // 用空字符串占位
+    };
+    
+    const payload = JSON.stringify(payloadForSignature);
+    
+    // 生成签名
+    const signature = generateSignature(SECRET_KEY, date, 'asr', payload);
+    const authorization = `TC3-HMAC-SHA256 Credential=${SECRET_ID}/${date}/asr/tc3_request, SignedHeaders=content-type;host, Signature=${signature}`;
+    
+    const headers = {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Authorization': authorization,
+      'X-TC-Action': 'SentenceRecognition',
+      'X-TC-Version': '2019-06-14',
+      'X-TC-Timestamp': timestamp.toString(),
+      'X-TC-Region': 'ap-beijing'
+    };
+    
+    return {
+      success: true,
+      headers,
+      payload: payloadTemplate,
+      endpoint: 'https://asr.tencentcloudapi.com'
+    };
+  } catch (error) {
+    console.error('生成签名错误:', error);
+    return {
+      success: false,
+      headers: {},
+      payload: {
+        ProjectId: 0,
+        SubServiceType: 2,
+        EngSerViceType: '16k',
+        SourceType: 1,
+        VoiceFormat: 4,
+        UsrAudioKey: '',
+        DataLen: 0
+      },
+      endpoint: '',
+      error: error instanceof Error ? error.message : '未知错误'
+    };
+  }
+}

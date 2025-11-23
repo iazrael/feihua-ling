@@ -12,6 +12,11 @@ let timerInterval: number | null = null;
 
 // 倒计时颜色类
 const timerColorClass = computed(() => {
+  // 语音识别中，显示蓝色
+  if (gameStore.timerPausedByVoice || gameStore.voiceInputInProgress) {
+    return 'text-blue-500';
+  }
+  
   const time = gameStore.timeRemaining;
   if (time <= 2) return 'text-red-500 animate-pulse';
   if (time <= 5) return 'text-yellow-500 animate-bounce';
@@ -25,6 +30,11 @@ const progressPercentage = computed(() => {
 
 // 进度条颜色
 const progressColorClass = computed(() => {
+  // 语音识别中，显示蓝色
+  if (gameStore.timerPausedByVoice || gameStore.voiceInputInProgress) {
+    return 'bg-blue-500';
+  }
+  
   const time = gameStore.timeRemaining;
   if (time <= 2) return 'bg-red-500';
   if (time <= 5) return 'bg-yellow-500';
@@ -99,7 +109,9 @@ onUnmounted(() => {
 <template>
   <div class="timer-container bg-white rounded-lg shadow-lg p-4">
     <div class="flex items-center justify-between mb-2">
-      <span class="text-sm text-gray-600">剩余时间</span>
+      <span class="text-sm text-gray-600">
+        {{ gameStore.timerPausedByVoice || gameStore.voiceInputInProgress ? '语音识别中' : '剩余时间' }}
+      </span>
       <div :class="['text-4xl font-bold tabular-nums', timerColorClass]">
         {{ gameStore.timeRemaining }}秒
       </div>
@@ -113,8 +125,15 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- 视觉提示 -->
-    <div v-if="gameStore.timeRemaining <= 3 && gameStore.timerActive" class="mt-2 text-center">
+    <!-- 语音识别状态提示 -->
+    <div v-if="gameStore.timerPausedByVoice || gameStore.voiceInputInProgress" class="mt-2 text-center">
+      <span class="text-blue-500 text-sm font-semibold animate-pulse">
+        🎤 语音识别中...计时器已暂停
+      </span>
+    </div>
+
+    <!-- 超时警告 -->
+    <div v-else-if="gameStore.timeRemaining <= 3 && gameStore.timerActive" class="mt-2 text-center">
       <span class="text-red-500 text-sm font-semibold animate-pulse">
         ⚠️ 时间不多了！
       </span>

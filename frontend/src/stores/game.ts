@@ -3,7 +3,7 @@ import type { GameState, HistoryItem } from '@/types/game';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-const DEFAULT_TIMER_DURATION = 30; // 默认倒计时20秒
+const DEFAULT_TIMER_DURATION = 60; // 默认倒计时20秒
 
 export const useGameStore = defineStore('game', {
   state: (): GameState => ({
@@ -32,6 +32,19 @@ export const useGameStore = defineStore('game', {
     soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
     soundVolume: parseFloat(localStorage.getItem('soundVolume') || '0.8'),
     timerDuration: parseInt(localStorage.getItem('timerDuration') || String(DEFAULT_TIMER_DURATION)),
+    // 语音输入相关状态
+    timerPausedByVoice: false,
+    pausedTimeRemaining: 0,
+    voiceInputInProgress: false,
+    // 多轮对话上下文
+    conversationContext: {
+      recentHistory: [],
+      userStyle: {
+        commonErrors: [],
+        accuracyRate: 0,
+        averageConfidence: 'medium',
+      },
+    },
   }),
 
   getters: {
@@ -77,6 +90,33 @@ export const useGameStore = defineStore('game', {
       this.timeRemaining = time;
     },
 
+    // 暂停计时器（语音输入）
+    pauseTimerForVoice() {
+      if (this.timerActive) {
+        this.stopTimer();
+        this.pausedTimeRemaining = this.timeRemaining;
+        this.timerPausedByVoice = true;
+        this.voiceInputInProgress = true;
+      }
+    },
+
+    // 恢复计时器（语音输入完成）
+    resumeTimerAfterVoice() {
+      if (this.timerPausedByVoice) {
+        this.timeRemaining = this.pausedTimeRemaining;
+        this.timerActive = true;
+        this.timerPausedByVoice = false;
+        this.voiceInputInProgress = false;
+      }
+    },
+
+    // 取消语音暂停状态
+    cancelVoicePause() {
+      this.timerPausedByVoice = false;
+      this.voiceInputInProgress = false;
+      this.pausedTimeRemaining = 0;
+    },
+
     // 处理超时
     handleTimeout() {
       this.stopTimer();
@@ -120,6 +160,9 @@ export const useGameStore = defineStore('game', {
           fastestResponse: 0,
           perfectRounds: 0,
         };
+        
+        // 重置会话上下文
+        this.resetConversationContext();
 
         // 添加AI的首句
         const aiSentence: HistoryItem = {
@@ -333,6 +376,78 @@ export const useGameStore = defineStore('game', {
     // 重置游戏
     resetGame() {
       this.$reset();
+    },
+
+    // 更新会话上下文
+    updateConversationContext(recognizedText: string, correctedSentence: string, isCorrect: boolean) {
+      const historyLimit = 3; // 保留最近3轮记录
+      
+      // 添加本轮记录
+      this.conversationContext.recentHistory.push({
+        round: this.currentRound,
+        recognizedText,
+        correctedSentence,
+        isCorrect,
+      });
+      
+      // 只保留最近N轮记录
+      if (this.conversationContext.recentHistory.length > historyLimit) {
+        this.conversationContext.recentHistory.shift();
+      }
+      
+      // 更新用户答题风格统计
+      this.updateUserStyle(recognizedText, correctedSentence, isCorrect);
+    },
+
+    // 更新用户答题风格
+    updateUserStyle(recognizedText: string, correctedSentence: string, isCorrect: boolean) {
+      // 统计常见识别错误
+      if (recognizedText !== correctedSentence) {
+        // 找出字符差异
+        for (let i = 0; i < Math.min(recognizedText.length, correctedSentence.length); i++) {
+          if (recognizedText[i] !== correctedSentence[i]) {
+            const errorPattern = `${correctedSentence[i]}->${recognizedText[i]}`;
+            if (!this.conversationContext.userStyle.commonErrors.includes(errorPattern)) {
+              this.conversationContext.userStyle.commonErrors.push(errorPattern);
+              // 只保留最常见的10个错误模式
+              if (this.conversationContext.userStyle.commonErrors.length > 10) {
+                this.conversationContext.userStyle.commonErrors.shift();
+              }
+            }
+          }
+        }
+      }
+      
+      // 计算识别准确率
+      const totalAttempts = this.conversationContext.recentHistory.length;
+      const correctAttempts = this.conversationContext.recentHistory.filter((h: any) => h.isCorrect).length;
+      this.conversationContext.userStyle.accuracyRate = totalAttempts > 0 ? correctAttempts / totalAttempts : 0;
+      
+      // 更新平均置信度
+      if (this.conversationContext.userStyle.accuracyRate >= 0.8) {
+        this.conversationContext.userStyle.averageConfidence = 'high';
+      } else if (this.conversationContext.userStyle.accuracyRate >= 0.5) {
+        this.conversationContext.userStyle.averageConfidence = 'medium';
+      } else {
+        this.conversationContext.userStyle.averageConfidence = 'low';
+      }
+    },
+
+    // 获取会话上下文（供LLM调用）
+    getConversationContext() {
+      return this.conversationContext;
+    },
+
+    // 重置会话上下文（新游戏开始时）
+    resetConversationContext() {
+      this.conversationContext = {
+        recentHistory: [],
+        userStyle: {
+          commonErrors: [],
+          accuracyRate: 0,
+          averageConfidence: 'medium',
+        },
+      };
     },
   },
 });

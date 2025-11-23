@@ -163,6 +163,8 @@ const handleTimeout = () => {
           <div class="bg-white rounded-lg shadow-lg p-6">
             <InputPanel
               ref="inputPanelRef"
+              :keyword="gameStore.keyword"
+              :usedPoems="gameStore.usedPoems"
               @submit="handleSubmit"
               @hint="handleHint"
               @skip="handleSkip"
