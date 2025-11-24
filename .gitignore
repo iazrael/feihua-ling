@@ -16,6 +16,8 @@ pnpm-debug.log*
 .idea/
 *.swp
 *.swo
+.qoder
+
 
 # 构建产物
 dist/
